@@ -1,0 +1,56 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: static-web
+  namespace: dev
+  annotations:
+    cert-manager.io/issuer: letsencrypt-prod
+    nginx.ingress.kubernetes.io/proxy-body-size: 16m
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "86400"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "86400"
+    nginx.ingress.kubernetes.io/websocket-services: "info-server-dev"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: tornberg.me
+    http:
+      paths:
+      - backend:
+          service:
+            name: static-web
+            port:
+              number: 80
+        path: /
+        pathType: Prefix
+      - backend:
+          service:
+            name: go-api
+            port:
+              number: 3000
+        path: /ip
+        pathType: Prefix
+      - backend:
+          service:
+            name: go-api
+            port:
+              number: 3000
+        path: /api/waste
+        pathType: Prefix
+      - backend:
+          service:
+            name: go-api
+            port:
+              number: 3000
+        path: /api/power
+        pathType: Prefix
+      - backend:
+          service:
+            name: info-server-dev
+            port:
+              number: 8080
+        path: /info-ws
+        pathType: Prefix
+  tls:
+  - hosts:
+    - tornberg.me
+    secretName: static-tls2-secret
