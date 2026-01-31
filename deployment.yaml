@@ -1,61 +1,9 @@
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: info-server
-  namespace: home
-spec:
-  replicas: 1
-  selector:
-    matchLabels:
-      app: info-server
-  template:
-    metadata:
-      labels:
-        app: info-server
-    spec:
-      containers:
-      - name: info-server
-        image: matst80/info-server:latest
-        ports:
-        - containerPort: 8080
-        resources:
-          limits:
-            memory: "128Mi"
-            cpu: "100m"
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: info-server
+  name: info-server-dev
   namespace: home
 spec:
-  selector:
-    app: info-server
-  ports:
-  - port: 8080
-    targetPort: 8080
-  type: ClusterIP
----
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: info-server
-  namespace: home
-  annotations:
-    cert-manager.io/cluster-issuer: "letsencrypt-prod"
-spec:
-  tls:
-  - hosts:
-    - info.k6n.net
-    secretName: info-k6n-net-tls
-  rules:
-  - host: info.k6n.net
-    http:
-      paths:
-      - path: /
-        pathType: Prefix
-        backend:
-          service:
-            name: info-server
-            port:
-              number: 8080
+  type: ExternalName
+  externalName: info-server.home.svc.cluster.local
