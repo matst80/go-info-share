@@ -76,6 +76,14 @@ var upgrader = websocket.Upgrader{
 
 func wsHandler(kv *KVStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(200)
+			return
+		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err != nil {
 			log.Println(err)
@@ -94,6 +102,14 @@ func wsHandler(kv *KVStore) http.HandlerFunc {
 
 func setHandler(kv *KVStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(200)
+			return
+		}
 		key := r.URL.Query().Get("key")
 		value := r.URL.Query().Get("value")
 		if key == "" || value == "" {
@@ -108,6 +124,14 @@ func setHandler(kv *KVStore) http.HandlerFunc {
 
 func getHandler(kv *KVStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(200)
+			return
+		}
 		key := r.URL.Query().Get("key")
 		if key == "" {
 			http.Error(w, "missing key", 400)
@@ -124,6 +148,14 @@ func getHandler(kv *KVStore) http.HandlerFunc {
 
 func getAllHandler(kv *KVStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		// CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(200)
+			return
+		}
 		all := kv.GetAll()
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(all)
