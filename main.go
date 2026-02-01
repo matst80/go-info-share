@@ -146,7 +146,32 @@ func getHandler(kv *KVStore) http.HandlerFunc {
 	}
 }
 
-func getAllHandler(kv *KVStore) http.HandlerFunc {
+func hookHandler(kv *KVStore) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// CORS
+		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Headers", "*")
+		if r.Method == "OPTIONS" {
+			w.WriteHeader(200)
+			return
+		}
+		if r.Method != "POST" {
+			http.Error(w, "method not allowed", 405)
+			return
+		}
+		var payload struct {
+			Message string `json:"message"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+			http.Error(w, "invalid json", 400)
+			return
+		}
+		kv.Set("hook", payload.Message)
+		w.WriteHeader(200)
+		fmt.Fprint(w, "ok")
+	}
+}
 	return func(w http.ResponseWriter, r *http.Request) {
 		// CORS
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -171,6 +196,7 @@ func main() {
 	http.HandleFunc("/set", setHandler(kv))
 	http.HandleFunc("/get", getHandler(kv))
 	http.HandleFunc("/getall", getAllHandler(kv))
+	http.HandleFunc("/hook", hookHandler(kv))
 	http.HandleFunc("/info-ws", wsHandler(kv))
 
 	log.Println("Server starting on :8080")
