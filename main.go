@@ -74,117 +74,109 @@ var upgrader = websocket.Upgrader{
 	CheckOrigin: func(r *http.Request) bool { return true },
 }
 
-func wsHandler(kv *KVStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(200)
-			return
-		}
-		conn, err := upgrader.Upgrade(w, r, nil)
+func (kv *KVStore) wsHandler(w http.ResponseWriter, r *http.Request) {
+	// CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(200)
+		return
+	}
+	conn, err := upgrader.Upgrade(w, r, nil)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	kv.addConn(conn)
+	defer kv.removeConn(conn)
+	for {
+		_, _, err := conn.ReadMessage()
 		if err != nil {
-			log.Println(err)
-			return
-		}
-		kv.addConn(conn)
-		defer kv.removeConn(conn)
-		for {
-			_, _, err := conn.ReadMessage()
-			if err != nil {
-				break
-			}
+			break
 		}
 	}
 }
 
-func setHandler(kv *KVStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(200)
-			return
-		}
-		key := r.URL.Query().Get("key")
-		value := r.URL.Query().Get("value")
-		if key == "" || value == "" {
-			http.Error(w, "missing key or value", 400)
-			return
-		}
-		kv.Set(key, value)
+func (kv *KVStore) setHandler(w http.ResponseWriter, r *http.Request) {
+	// CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == "OPTIONS" {
 		w.WriteHeader(200)
-		fmt.Fprint(w, "ok")
+		return
 	}
+	key := r.URL.Query().Get("key")
+	value := r.URL.Query().Get("value")
+	if key == "" || value == "" {
+		http.Error(w, "missing key or value", 400)
+		return
+	}
+	kv.Set(key, value)
+	w.WriteHeader(200)
+	fmt.Fprint(w, "ok")
 }
 
-func getHandler(kv *KVStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(200)
-			return
-		}
-		key := r.URL.Query().Get("key")
-		if key == "" {
-			http.Error(w, "missing key", 400)
-			return
-		}
-		value, ok := kv.Get(key)
-		if !ok {
-			http.NotFound(w, r)
-			return
-		}
-		fmt.Fprint(w, value)
-	}
-}
-
-func hookHandler(kv *KVStore) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		// CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(200)
-			return
-		}
-		if r.Method != "POST" {
-			http.Error(w, "method not allowed", 405)
-			return
-		}
-		var payload struct {
-			Message string `json:"message"`
-		}
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			http.Error(w, "invalid json", 400)
-			return
-		}
-		kv.Set("hook", payload.Message)
+func (kv *KVStore) getHandler(w http.ResponseWriter, r *http.Request) {
+	// CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == "OPTIONS" {
 		w.WriteHeader(200)
-		fmt.Fprint(w, "ok")
+		return
 	}
+	key := r.URL.Query().Get("key")
+	if key == "" {
+		http.Error(w, "missing key", 400)
+		return
+	}
+	value, ok := kv.Get(key)
+	if !ok {
+		http.NotFound(w, r)
+		return
+	}
+	fmt.Fprint(w, value)
 }
-	return func(w http.ResponseWriter, r *http.Request) {
-		// CORS
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
-		w.Header().Set("Access-Control-Allow-Headers", "*")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(200)
-			return
-		}
-		all := kv.GetAll()
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(all)
+
+func (kv *KVStore) hookHandler(w http.ResponseWriter, r *http.Request) {
+	// CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(200)
+		return
 	}
+	if r.Method != "POST" {
+		http.Error(w, "method not allowed", 405)
+		return
+	}
+	var payload struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "invalid json", 400)
+		return
+	}
+	kv.Set("hook", payload.Message)
+	w.WriteHeader(200)
+	fmt.Fprint(w, "ok")
+}
+
+func (kv *KVStore) getAllHandler(w http.ResponseWriter, r *http.Request) {
+	// CORS
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+	w.Header().Set("Access-Control-Allow-Headers", "*")
+	if r.Method == "OPTIONS" {
+		w.WriteHeader(200)
+		return
+	}
+	all := kv.GetAll()
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(all)
 }
 
 func main() {
@@ -193,11 +185,11 @@ func main() {
 		conns: make([]*websocket.Conn, 0),
 	}
 
-	http.HandleFunc("/set", setHandler(kv))
-	http.HandleFunc("/get", getHandler(kv))
-	http.HandleFunc("/getall", getAllHandler(kv))
-	http.HandleFunc("/hook", hookHandler(kv))
-	http.HandleFunc("/info-ws", wsHandler(kv))
+	http.HandleFunc("/set", kv.setHandler)
+	http.HandleFunc("/get", kv.getHandler)
+	http.HandleFunc("/getall", kv.getAllHandler)
+	http.HandleFunc("/hook", kv.hookHandler)
+	http.HandleFunc("/info-ws", kv.wsHandler)
 
 	log.Println("Server starting on :8080")
 	log.Fatal(http.ListenAndServe(":8080", nil))
